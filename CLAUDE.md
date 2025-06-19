@@ -3,61 +3,92 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-VSExample is a containerized development environment that demonstrates Visual Studio Code integration with GitHub Actions using public runners. It provides MCP (Model Context Protocol) tools for C++ code quality checks, GitHub Actions workflow validation, and CI/CD pipeline execution.
+VSExample is a learning exercise for migrating Visual Studio 2017 projects from Azure DevOps Server (TFS) to GitHub Actions using public Windows runners. The repository contains a .NET Framework 4.6.1 solution with a HelloWorld console application and MSTest unit tests.
 
 ## Common Commands
 
-### Starting the Development Environment
+### Building the .NET Project Locally
 ```bash
-# Start the MCP server in background
-docker-compose up -d mcp-server
+# Restore NuGet packages
+nuget restore VSExample.sln
 
-# Run Claude Code interface
-./run_claude.sh
+# Build the solution
+msbuild VSExample.sln /p:Configuration=Release /p:Platform="Any CPU"
+
+# Run tests
+vstest.console.exe HelloWorld.Tests\bin\Release\HelloWorld.Tests.dll
 ```
 
-### Running Code Quality Checks
-The project provides MCP tools that should be used instead of direct commands:
-- Use `format_check` tool to check C++ code formatting
-- Use `format_fix` tool to automatically fix formatting issues
-- Use `lint` tool to run clang-tidy linting
-- Use `analyze` tool for static analysis with cppcheck
-- Use `full_ci` tool to run the complete CI pipeline
+### Using GitHub CLI Tools
+```bash
+# Start the MCP server with GitHub CLI access
+docker-compose up -d mcp-server
 
-### GitHub Actions Management
-- Use `check_workflow_runs` tool to monitor workflow status
-- Use `validate_workflow_yaml` tool to validate workflow YAML syntax
+# Check workflow runs
+docker-compose run --rm mcp-server gh workflow list --repo AndrewAltimit/VSExample
+docker-compose run --rm mcp-server gh run list --repo AndrewAltimit/VSExample
 
-## Architecture
+# View specific workflow run details
+docker-compose run --rm mcp-server gh run view <RUN_ID> --repo AndrewAltimit/VSExample
+```
 
-### MCP Server (`mcp-server.py`)
-The core of the project is a Python-based MCP server that exposes development tools through the Model Context Protocol. The server runs in a Docker container and provides tools for code formatting, linting, static analysis, and GitHub integration.
+## Project Structure
 
-### Docker Setup
-- **Base Image**: Ubuntu 22.04 with development tools
-- **Service Name**: `mcp-server`
-- **Working Directory**: `/workspace` (mounted from project root)
-- **Key Dependencies**: Python 3, GitHub CLI, clang-format, clang-tidy, cppcheck
-- **Port**: 8000 (exposed by container)
+### Solution Layout
+- `VSExample.sln` - Visual Studio 2017 solution file (root directory)
+- `HelloWorld/` - Main console application project
+  - `HelloWorld.csproj` - .NET Framework 4.6.1 project file
+  - `Program.cs` - Entry point with Hello World implementation
+  - `Properties/AssemblyInfo.cs` - Assembly metadata
+- `HelloWorld.Tests/` - MSTest unit test project
+  - `HelloWorld.Tests.csproj` - Test project file
+  - `UnitTest1.cs` - Basic unit tests
+  - `packages.config` - NuGet package references
 
-### Environment Requirements
-- Docker and Docker Compose must be installed
-- Node.js 22.16.0 (managed by NVM in `run_claude.sh`)
-- GitHub token should be set as `GITHUB_TOKEN` environment variable for GitHub API access
+### GitHub Actions Workflows
+- `.github/workflows/build.yml` - Simple build and test workflow
+- `.github/workflows/tfs-style-build.yml` - Detailed workflow mimicking TFS build steps with:
+  - Get Sources (checkout)
+  - NuGet Restore
+  - Visual Studio Build (MSBuild)
+  - Visual Studio Test (VSTest)
+  - Copy Files to Staging
+  - Publish Artifacts
 
-## Development Workflow
+## GitHub Actions Configuration
 
-1. **Code Changes**: Make changes to C++ source files in the project
-2. **Format Check**: Use the `format_check` tool to verify formatting
-3. **Auto-Format**: If needed, use `format_fix` to correct formatting
-4. **Linting**: Run the `lint` tool to check for code issues
-5. **Static Analysis**: Use `analyze` tool for deeper code analysis
-6. **CI Pipeline**: Run `full_ci` to execute the complete pipeline before committing
+### Windows Runner Requirements
+- Uses `windows-latest` (or `windows-2022`) runners
+- Requires MSBuild setup action: `microsoft/setup-msbuild@v1.1`
+- Requires NuGet setup action: `NuGet/setup-nuget@v1.1.1`
+- Requires VSTest setup action: `darenm/Setup-VSTest@v1.2`
+
+### Build Variables (TFS-style)
+- `BUILD_CONFIGURATION`: Release
+- `BUILD_PLATFORM`: "Any CPU"
+- `SOLUTION_FILE`: VSExample.sln
+
+## Migration Notes from TFS
+
+### Key Differences
+1. **Build Agents**: TFS uses private build agents, GitHub Actions uses public runners
+2. **Build Steps**: TFS tasks map to GitHub Actions as follows:
+   - TFS "Get Sources" → `actions/checkout@v3`
+   - TFS "NuGet Restore" → `nuget restore` command
+   - TFS "Visual Studio Build" → `msbuild` command
+   - TFS "Visual Studio Test" → `vstest.console.exe` command
+   - TFS "Copy Files" → PowerShell `Copy-Item` commands
+   - TFS "Publish Artifact" → `actions/upload-artifact@v3`
+
+### Environment Setup
+- The Docker container includes GitHub CLI for monitoring builds
+- GITHUB_TOKEN must be configured in .env file for API access
+- The container setup allows running gh commands to check workflow status
 
 ## Important Notes
 
-- All development tools run inside Docker containers for consistency
-- The MCP server must be running (`docker-compose up -d mcp-server`) before using any tools
-- Git configuration and SSH keys are automatically mounted from the host system
-- The project is designed to work with public GitHub runners
-- When working with GitHub Actions, ensure `GITHUB_TOKEN` is properly configured
+- This is a .NET Framework 4.6.1 project (not .NET Core/5+)
+- Visual Studio 2017 compatibility is maintained (ToolsVersion="15.0")
+- MSTest is used for unit testing (not xUnit or NUnit)
+- The project demonstrates migration patterns from TFS to GitHub Actions
+- All builds run on Windows public runners to match typical TFS environments
