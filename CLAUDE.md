@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-VSExample is a learning exercise for migrating Visual Studio 2017 projects from Azure DevOps Server (TFS) to GitHub Actions using public Windows runners. The repository contains a .NET Framework 4.6.1 solution with a HelloWorld console application and MSTest unit tests.
+VSExample is a learning exercise for migrating Visual Studio 2017 projects from Azure DevOps Server (TFS) to GitHub Actions using public Windows runners. The repository contains a .NET Framework 4.8 solution with a HelloWorld console application and MSTest unit tests.
 
 ## Common Commands
 
@@ -37,7 +37,7 @@ docker-compose run --rm mcp-server gh run view <RUN_ID> --repo AndrewAltimit/VSE
 ### Solution Layout
 - `VSExample.sln` - Visual Studio 2017 solution file (root directory)
 - `HelloWorld/` - Main console application project
-  - `HelloWorld.csproj` - .NET Framework 4.6.1 project file
+  - `HelloWorld.csproj` - .NET Framework 4.8 project file
   - `Program.cs` - Entry point with Hello World implementation
   - `Properties/AssemblyInfo.cs` - Assembly metadata
 - `HelloWorld.Tests/` - MSTest unit test project
@@ -47,7 +47,7 @@ docker-compose run --rm mcp-server gh run view <RUN_ID> --repo AndrewAltimit/VSE
 
 ### GitHub Actions Workflows
 - `.github/workflows/build.yml` - Simple build and test workflow
-- `.github/workflows/tfs-style-build.yml` - Detailed workflow mimicking TFS build steps with:
+- `.github/workflows/tfs-build.yml` - Detailed workflow mimicking TFS build steps with:
   - Get Sources (checkout)
   - NuGet Restore
   - Visual Studio Build (MSBuild)
@@ -87,7 +87,7 @@ docker-compose run --rm mcp-server gh run view <RUN_ID> --repo AndrewAltimit/VSE
 
 ## Important Notes
 
-- This is a .NET Framework 4.6.1 project (not .NET Core/5+)
+- This is a .NET Framework 4.8 project (not .NET Core/5+)
 - Visual Studio 2017 compatibility is maintained (ToolsVersion="15.0")
 - MSTest is used for unit testing (not xUnit or NUnit)
 - The project demonstrates migration patterns from TFS to GitHub Actions
