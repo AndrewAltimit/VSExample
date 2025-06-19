@@ -1,0 +1,95 @@
+name: TFS-Style Build Pipeline
+
+on:
+  push:
+    branches: [ main, master, claude-code ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  SOLUTION_FILE: VSExample.sln
+  BUILD_CONFIGURATION: Release
+  BUILD_PLATFORM: "Any CPU"
+
+jobs:
+  build-and-test:
+    name: Build and Test (.NET Framework 4.6.1)
+    runs-on: windows-2022
+    
+    steps:
+    - name: 🔍 Get Sources (TFS: Get Latest)
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: 📋 Display Build Information
+      run: |
+        echo "Build Number: ${{ github.run_number }}"
+        echo "Source Branch: ${{ github.ref }}"
+        echo "Commit SHA: ${{ github.sha }}"
+        echo "Build Agent: ${{ runner.os }} - ${{ runner.name }}"
+        echo "Repository: ${{ github.repository }}"
+        
+    - name: 🔧 Setup Build Tools
+      uses: microsoft/setup-msbuild@v1.1
+      with:
+        msbuild-architecture: x64
+        
+    - name: 📦 Setup NuGet
+      uses: NuGet/setup-nuget@v1.1.1
+      
+    - name: 🔄 Restore NuGet Packages (TFS: NuGet Restore)
+      run: |
+        nuget restore "${{ env.SOLUTION_FILE }}" -Verbosity detailed
+        
+    - name: 🏗️ Build Solution (TFS: Visual Studio Build)
+      run: |
+        msbuild "${{ env.SOLUTION_FILE }}" `
+          /p:Configuration="${{ env.BUILD_CONFIGURATION }}" `
+          /p:Platform="${{ env.BUILD_PLATFORM }}" `
+          /p:DeployOnBuild=true `
+          /p:WebPublishMethod=Package `
+          /p:PackageAsSingleFile=true `
+          /p:SkipInvalidConfigurations=true `
+          /t:Build `
+          /v:normal `
+          /m
+          
+    - name: 🧪 Setup VSTest
+      uses: darenm/Setup-VSTest@v1.2
+      
+    - name: 🧪 Run Unit Tests (TFS: Visual Studio Test)
+      run: |
+        vstest.console.exe `
+          "HelloWorld.Tests\bin\${{ env.BUILD_CONFIGURATION }}\HelloWorld.Tests.dll" `
+          /Logger:trx `
+          /ResultsDirectory:TestResults
+          
+    - name: 📊 Publish Test Results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results
+        path: TestResults\*.trx
+        
+    - name: 📦 Copy Files to Staging (TFS: Copy Files)
+      run: |
+        New-Item -ItemType Directory -Force -Path staging
+        Copy-Item -Path "HelloWorld\bin\${{ env.BUILD_CONFIGURATION }}\*" -Destination "staging\" -Recurse
+        
+    - name: 📤 Publish Build Artifacts (TFS: Publish Artifact)
+      uses: actions/upload-artifact@v3
+      with:
+        name: drop
+        path: staging\
+        
+    - name: 📊 Build Summary
+      if: always()
+      run: |
+        echo "## Build Summary" >> $env:GITHUB_STEP_SUMMARY
+        echo "- Solution: ${{ env.SOLUTION_FILE }}" >> $env:GITHUB_STEP_SUMMARY
+        echo "- Configuration: ${{ env.BUILD_CONFIGURATION }}" >> $env:GITHUB_STEP_SUMMARY
+        echo "- Platform: ${{ env.BUILD_PLATFORM }}" >> $env:GITHUB_STEP_SUMMARY
+        echo "- Build Number: ${{ github.run_number }}" >> $env:GITHUB_STEP_SUMMARY
+        echo "- Status: ${{ job.status }}" >> $env:GITHUB_STEP_SUMMARY
