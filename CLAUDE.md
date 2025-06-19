@@ -5,6 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 VSExample is a learning exercise for migrating Visual Studio 2017 projects from Azure DevOps Server (TFS) to GitHub Actions using public Windows runners. The repository contains a .NET Framework 4.8 solution with a HelloWorld console application and MSTest unit tests.
 
+**IMPORTANT**: This repository specifically uses Visual Studio 2017 Build Tools to maintain exact compatibility with legacy TFS environments. The GitHub Actions workflows install VS 2017 Build Tools on each run.
+
 ## Common Commands
 
 ### Building the .NET Project Locally
@@ -59,9 +61,10 @@ docker-compose run --rm mcp-server gh run view <RUN_ID> --repo AndrewAltimit/VSE
 
 ### Windows Runner Requirements
 - Uses `windows-latest` (or `windows-2022`) runners
-- Requires MSBuild setup action: `microsoft/setup-msbuild@v1.1`
+- **Installs Visual Studio 2017 Build Tools** on each run (adds ~3-5 minutes to build time)
+- Uses VS 2017 MSBuild (v15.0) from: `C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin`
+- Uses VS 2017 VSTest.console.exe from: `C:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\Common7\IDE\Extensions\TestPlatform`
 - Requires NuGet setup action: `NuGet/setup-nuget@v1.1.1`
-- Requires VSTest setup action: `darenm/Setup-VSTest@v1.2`
 
 ### Build Variables (TFS-style)
 - `BUILD_CONFIGURATION`: Release
@@ -88,7 +91,9 @@ docker-compose run --rm mcp-server gh run view <RUN_ID> --repo AndrewAltimit/VSE
 ## Important Notes
 
 - This is a .NET Framework 4.8 project (not .NET Core/5+)
-- Visual Studio 2017 compatibility is maintained (ToolsVersion="15.0")
+- **Visual Studio 2017 Build Tools are explicitly installed and used** (ToolsVersion="15.0")
+- MSBuild 15.0 is used to maintain exact compatibility with TFS/VS 2017 environments
 - MSTest is used for unit testing (not xUnit or NUnit)
 - The project demonstrates migration patterns from TFS to GitHub Actions
-- All builds run on Windows public runners to match typical TFS environments
+- All builds run on Windows public runners with VS 2017 installed during workflow execution
+- Build times are longer due to VS 2017 installation (~3-5 minutes overhead)
