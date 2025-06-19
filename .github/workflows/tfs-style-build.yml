@@ -67,7 +67,7 @@ jobs:
           /ResultsDirectory:TestResults
           
     - name: 📊 Publish Test Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: test-results
@@ -79,7 +79,7 @@ jobs:
         Copy-Item -Path "HelloWorld\bin\${{ env.BUILD_CONFIGURATION }}\*" -Destination "staging\" -Recurse
         
     - name: 📤 Publish Build Artifacts (TFS: Publish Artifact)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: drop
         path: staging\
