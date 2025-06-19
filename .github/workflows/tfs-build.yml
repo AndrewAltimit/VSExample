@@ -90,11 +90,22 @@ jobs:
       
     - name: 🧪 Run Unit Tests (TFS: Visual Studio Test)
       run: |
-        # Use VS 2017 VSTest.console.exe
-        & "${{ env.VS2017_PATH }}\Common7\IDE\Extensions\TestPlatform\vstest.console.exe" `
-          "HelloWorld.Tests\bin\${{ env.BUILD_CONFIGURATION }}\HelloWorld.Tests.dll" `
-          /Logger:trx `
-          /ResultsDirectory:TestResults
+        # Find and use VS 2017 VSTest.console.exe
+        $vs2017Root = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2017\BuildTools"
+        $vsTestPath = Get-ChildItem -Path $vs2017Root -Recurse -Name "vstest.console.exe" | Select-Object -First 1
+        if ($vsTestPath) {
+          $fullVsTestPath = Join-Path $vs2017Root $vsTestPath
+          Write-Host "Using VSTest from: $fullVsTestPath"
+          & $fullVsTestPath `
+            "HelloWorld.Tests\bin\${{ env.BUILD_CONFIGURATION }}\HelloWorld.Tests.dll" `
+            /Logger:trx `
+            /ResultsDirectory:TestResults
+        } else {
+          Write-Host "VSTest not found, using MSTest from VS 2017"
+          & "$vs2017Root\MSBuild\15.0\Bin\MSTest.exe" `
+            /testcontainer:"HelloWorld.Tests\bin\${{ env.BUILD_CONFIGURATION }}\HelloWorld.Tests.dll" `
+            /resultsfile:TestResults\results.trx
+        }
           
     - name: 📊 Publish Test Results
       uses: actions/upload-artifact@v4

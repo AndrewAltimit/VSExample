@@ -31,7 +31,10 @@ jobs:
           '--add', 'Microsoft.Component.MSBuild',
           '--add', 'Microsoft.Net.Component.4.8.TargetingPack',
           '--add', 'Microsoft.Net.Component.4.6.1.TargetingPack',
-          '--add', 'Microsoft.VisualStudio.Component.NuGet.BuildTools'
+          '--add', 'Microsoft.VisualStudio.Component.NuGet.BuildTools',
+          '--add', 'Microsoft.VisualStudio.Component.TestTools.BuildTools',
+          '--add', 'Microsoft.VisualStudio.Component.VC.TestAdapterForBoostTest',
+          '--add', 'Microsoft.VisualStudio.Component.VC.TestAdapterForGoogleTest'
         ) -Wait -PassThru
         
         Write-Host "VS 2017 Build Tools installation completed"
@@ -56,8 +59,16 @@ jobs:
       
     - name: Run tests
       run: |
-        # Use VS 2017 VSTest.console.exe
-        & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2017\BuildTools\Common7\IDE\Extensions\TestPlatform\vstest.console.exe" HelloWorld.Tests\bin\Release\HelloWorld.Tests.dll
+        # Find and use VS 2017 VSTest.console.exe
+        $vsTestPath = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2017\BuildTools" -Recurse -Name "vstest.console.exe" | Select-Object -First 1
+        if ($vsTestPath) {
+          $fullVsTestPath = Join-Path "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2017\BuildTools" $vsTestPath
+          Write-Host "Using VSTest from: $fullVsTestPath"
+          & $fullVsTestPath HelloWorld.Tests\bin\Release\HelloWorld.Tests.dll
+        } else {
+          Write-Host "VSTest not found, using default MSTest"
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin\MSTest.exe" /testcontainer:HelloWorld.Tests\bin\Release\HelloWorld.Tests.dll
+        }
       
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
