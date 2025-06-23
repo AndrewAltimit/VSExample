@@ -1,39 +1,38 @@
-# Base image with development tools
-FROM --platform=linux/amd64 ubuntu:22.04
+# Slim MCP server image optimized for size and GitHub container registry
+FROM python:3.11-slim
 
-# Prevent interactive prompts during package installation
+# Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/workspace
 
-# Install system tools
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
+# Install minimal system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
-    python3 \
-    python3-pip \
-    wget \
-    curl \
-    gpg \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install GitHub CLI
-RUN type -p curl >/dev/null || (apt update && apt install curl -y) \
-    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-    && apt update \
-    && apt install gh -y \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Install Python dependencies
-RUN pip3 install --no-cache-dir \
-    pyyaml \
-    json5 \
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    pyyaml==6.0.1 \
     mcp>=1.0.0 \
     pydantic>=2.0.0
 
 # Create working directory
 WORKDIR /workspace
 
-# Default to bash for interactive use
-CMD ["/bin/bash"]
+# Copy MCP server script
+COPY mcp-server.py /workspace/
+
+# Create non-root user for security
+RUN useradd --create-home --shell /bin/bash mcp && \
+    chown -R mcp:mcp /workspace
+USER mcp
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python3 -c "import mcp; print('MCP server healthy')" || exit 1
+
+# Default command
+CMD ["python3", "mcp-server.py", "--project-root", "/workspace"]
