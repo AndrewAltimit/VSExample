@@ -1,15 +1,14 @@
 version: '3.8'
 
 services:
-  # MCP Server - containerized for isolated execution with GitHub CLI
+  # MCP Server - slim containerized server for API access
   mcp-server:
+    #image: vsexample:mcp-server
     build:
-      context: .
-      dockerfile: Dockerfile
+        dockerfile: Dockerfile
+        context: .
     volumes:
       - .:/workspace
-      - ~/.gitconfig:/etc/gitconfig:ro  # Share git config
-      - ~/.ssh:/root/.ssh:ro  # Share SSH keys if needed
     working_dir: /workspace
     ports:
       - "8000:8000"
@@ -18,8 +17,6 @@ services:
       - GITHUB_REPOSITORY=${GITHUB_REPOSITORY}
       - MCP_PROJECT_ROOT=/workspace
       - PYTHONPATH=/workspace
-      - GITHUB_TOKEN=${GITHUB_TOKEN}  # Pass GitHub token from environment
-      - GH_TOKEN=${GITHUB_TOKEN}      # Alternative name for GitHub CLI
     stdin_open: true
     tty: true
     command: python3 mcp-server.py --project-root /workspace
